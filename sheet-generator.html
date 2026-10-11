@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Letter &amp; Number Sheet Generator</title>
+<style>
+  :root{
+    --ink:#1f2937; --muted:#6b7280; --line:#e5e7eb; --bg:#eef0f6; --panel:#ffffff;
+    --accent:#6c5ce7;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{font-family:-apple-system,"SF Pro Text","Helvetica Neue",sans-serif;color:var(--ink);background:var(--bg);
+       -webkit-print-color-adjust:exact;print-color-adjust:exact}
+
+  /* ---------- control panel (screen only) ---------- */
+  .layout{display:flex;gap:28px;align-items:flex-start;padding:24px}
+  .panel{position:sticky;top:24px;width:300px;flex:0 0 300px;background:var(--panel);border-radius:18px;padding:22px;
+         box-shadow:0 6px 24px rgba(40,40,80,.10);max-height:calc(100vh - 48px);overflow:auto}
+  .panel h1{font-size:19px;margin:0 0 4px}
+  .panel p.sub{margin:0 0 18px;color:var(--muted);font-size:13px;line-height:1.4}
+  .group{margin:16px 0}
+  .group>label.h{display:block;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+  .check{display:flex;align-items:center;gap:9px;padding:6px 0;font-size:14px;cursor:pointer}
+  .check input{width:16px;height:16px;accent-color:var(--accent)}
+  select,input[type=number]{width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:10px;font-size:14px;background:#fff;color:var(--ink)}
+  .row{display:flex;gap:8px}
+  button{font:inherit;cursor:pointer;border:0;border-radius:12px;padding:11px 14px;font-weight:600;font-size:14px}
+  .btn-primary{background:var(--accent);color:#fff;width:100%;margin-top:6px}
+  .btn-primary:hover{filter:brightness(1.08)}
+  .btn-ghost{background:#f0efff;color:var(--accent);flex:1}
+  .btn-ghost:hover{background:#e6e3ff}
+  .tip{font-size:12px;color:var(--muted);line-height:1.5;background:#f8f8fc;border-radius:10px;padding:10px 12px;margin-top:14px}
+  .tip b{color:var(--ink)}
+  #pages{flex:1;display:flex;flex-direction:column;align-items:center;gap:22px}
+
+  /* ---------- the sheets ---------- */
+  .sheet{
+    width:8.5in;height:10.95in;background:#fff;position:relative;overflow:hidden;
+    padding:.5in .5in .4in;display:flex;flex-direction:column;
+    box-shadow:0 8px 30px rgba(40,40,80,.18);border-radius:4px;
+    break-after:page;page-break-after:always;
+  }
+  .sheet:last-child{break-after:auto;page-break-after:auto}
+  .band{position:absolute;left:0;right:0;top:0;height:.16in;background:linear-gradient(90deg,var(--a1),var(--a2))}
+  .head{display:flex;justify-content:space-between;align-items:flex-end;gap:.3in;padding-top:.12in;margin-bottom:.22in}
+  .title{font-size:30pt;font-weight:800;line-height:1.05;color:var(--a1);letter-spacing:-.01em}
+  .tagline{font-size:10.5pt;color:#7b8190;margin-top:5px}
+  .fields{display:flex;flex-direction:column;gap:.14in;min-width:3in}
+  .field{display:flex;align-items:flex-end;gap:8px;font-size:10pt;color:#7b8190;font-weight:600}
+  .field i{flex:1;border-bottom:1.5px solid #c9ccd6;height:.2in}
+  .grid{flex:1;display:grid;gap:.1in;min-height:0}
+  .cell{display:flex;align-items:center;justify-content:center;border-radius:.16in;border:1.5px solid;font-weight:600;line-height:1}
+  .foot{display:flex;justify-content:space-between;margin-top:.16in;font-size:8.5pt;color:#a0a5b3}
+
+  @page{size:letter;margin:0}
+  @media screen{ #pages .sheet{zoom:.66} }
+  @media print{
+    body{background:#fff}
+    .panel{display:none}
+    .layout{display:block;padding:0}
+    #pages{display:block}
+    .sheet{box-shadow:none;border-radius:0;margin:0}
+  }
+</style>
+</head>
+<body>
+<div class="layout">
+  <aside class="panel">
+    <h1>Sheet Generator</h1>
+    <p class="sub">Randomized letter and number sheets, one per US Letter page.</p>
+
+    <div class="group">
+      <label class="h">Sheet types</label>
+      <label class="check"><input type="checkbox" id="t-cap" checked> Capital letters</label>
+      <label class="check"><input type="checkbox" id="t-low" checked> Lowercase letters</label>
+      <label class="check"><input type="checkbox" id="t-mix" checked> Capital + lowercase</label>
+      <label class="check"><input type="checkbox" id="t-num" checked> Numbers 1–20</label>
+    </div>
+
+    <div class="group">
+      <label class="h">Sheets of each type</label>
+      <input type="number" id="count" min="1" max="20" value="1">
+    </div>
+
+    <div class="group">
+      <label class="h">Look</label>
+      <div style="margin-bottom:8px">
+        <select id="theme">
+          <option value="rainbow">Rainbow pastels</option>
+          <option value="ocean">Ocean blues</option>
+          <option value="sunset">Sunset warm</option>
+          <option value="forest">Forest greens</option>
+          <option value="mono">Black &amp; white (ink saver)</option>
+        </select>
+      </div>
+      <select id="font">
+        <option value='ui-rounded,"SF Pro Rounded","Avenir Next Rounded","Avenir Next",sans-serif'>Rounded (SF Rounded)</option>
+        <option value='"Avenir Next","Helvetica Neue",sans-serif'>Avenir Next</option>
+        <option value='Futura,"Trebuchet MS",sans-serif'>Futura</option>
+        <option value='"Helvetica Neue",Arial,sans-serif'>Helvetica Neue</option>
+        <option value='"Trebuchet MS",sans-serif'>Trebuchet</option>
+        <option value='Georgia,"Times New Roman",serif'>Georgia (serif)</option>
+        <option value='Chalkboard,"Chalkboard SE",sans-serif'>Chalkboard</option>
+      </select>
+    </div>
+
+    <div class="group">
+      <label class="h">Options</label>
+      <label class="check"><input type="checkbox" id="nameLine" checked> Name &amp; date lines</label>
+      <label class="check"><input type="checkbox" id="skipConf"> Leave out U and l (look-alikes)</label>
+    </div>
+
+    <div class="group">
+      <label class="h">Random seed</label>
+      <div class="row">
+        <input type="number" id="seed" value="1">
+        <button class="btn-ghost" id="shuffle" style="flex:0 0 auto">Shuffle</button>
+      </div>
+    </div>
+
+    <button class="btn-primary" id="print">Save as PDF…</button>
+    <div class="tip">
+      In the print window, open the <b>PDF</b> menu (bottom-left) and choose <b>Save as PDF</b>.
+      Set paper to <b>US Letter</b>, scale <b>100%</b>, and turn off <b>Print headers and footers</b>.
+      If colors are missing, tick <b>Print backgrounds</b>.
+    </div>
+  </aside>
+
+  <main id="pages"></main>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+
+const CAP = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+const LOW = "abcdefghijklmnopqrstuvwxyz".split("");
+
+const TYPES = {
+  cap: { title:"Capital Letters",            cols:5, items:s=>CAP.filter(c=>!(s&&c==="U")) },
+  low: { title:"Lowercase Letters",          cols:5, items:s=>LOW.filter(c=>!(s&&c==="l")) },
+  mix: { title:"Capital + Lowercase",        cols:7, items:s=>[...CAP.filter(c=>!(s&&c==="U")), ...LOW.filter(c=>!(s&&c==="l"))] },
+  num: { title:"Numbers 1–20",               cols:4, items:()=>Array.from({length:20},(_,i)=>String(i+1)) },
+};
+
+const THEMES = {
+  rainbow:{a1:"#7c5cff",a2:"#ff7eb6",cells:[["#ffe4e4","#f4a6a6"],["#fff0d4","#f2c276"],["#e2f6df","#8fd18a"],["#dcedff","#8bbcef"],["#ece3ff","#b79cf2"],["#ffe3f3","#f0a2cf"],["#d9f7f3","#7fd5cb"]]},
+  ocean:  {a1:"#1d6fd1",a2:"#27c2c2",cells:[["#e1efff","#8dbbee"],["#d9f4f4","#7fcfcf"],["#e8ecff","#a3b0ee"],["#dff6ec","#86d3b0"]]},
+  sunset: {a1:"#ee6a3c",a2:"#f2b33d",cells:[["#ffe6da","#f1a98a"],["#fff1cf","#efc668"],["#ffe0e6","#ec9aa9"],["#fdeccc","#e9b777"]]},
+  forest: {a1:"#2f8f5b",a2:"#8bbf3f",cells:[["#e2f4e8","#8fcfa7"],["#f0f6d8","#b9d46f"],["#dcf0ee","#7cc4bb"],["#f6f0da","#d3c27a"]]},
+  mono:   {a1:"#333333",a2:"#777777",cells:[["#ffffff","#bdbdbd"]]},
+};
+
+// seeded PRNG so a seed always reproduces the same sheets
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);
+  t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function shuffled(arr,rng){const a=arr.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(rng()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+
+const GRID_W = 7.5, GRID_H = 8.0, GAP = 0.1; // inches, used to size the characters
+
+function render(){
+  const seed = parseInt($("seed").value,10) || 1;
+  const count = Math.max(1, Math.min(20, parseInt($("count").value,10) || 1));
+  const theme = THEMES[$("theme").value];
+  const font = $("font").value;
+  const skip = $("skipConf").checked;
+  const showName = $("nameLine").checked;
+  const keys = ["cap","low","mix","num"].filter(k=>$("t-"+k).checked);
+
+  const out = [];
+  let n = 0;
+  const total = keys.length * count;
+  keys.forEach((k,ki)=>{
+    const spec = TYPES[k];
+    for(let c=0;c<count;c++){
+      n++;
+      const rng = mulberry32(seed*7919 + ki*1000 + c*31 + 17);
+      const items = shuffled(spec.items(skip), rng);
+      const cols = spec.cols, rows = Math.ceil(items.length/cols);
+      const cw = (GRID_W-GAP*(cols-1))/cols, ch = (GRID_H-GAP*(rows-1))/rows;
+      const fs = Math.min(cw,ch)*0.56; // inches
+      const cells = items.map((t,i)=>{
+        const [bg,bd] = theme.cells[(i%cols)%theme.cells.length];
+        return `<div class="cell" style="background:${bg};border-color:${bd};font-size:${fs}in">${t}</div>`;
+      }).join("");
+      out.push(`
+      <section class="sheet" style="--a1:${theme.a1};--a2:${theme.a2};font-family:${font}">
+        <div class="band"></div>
+        <div class="head">
+          <div>
+            <div class="title">${spec.title}</div>
+            <div class="tagline">Read each one aloud, left to right, top to bottom.</div>
+          </div>
+          ${showName?`<div class="fields">
+            <div class="field">Name<i></i></div>
+            <div class="field">Date<i></i></div></div>`:""}
+        </div>
+        <div class="grid" style="grid-template-columns:repeat(${cols},1fr);grid-template-rows:repeat(${rows},1fr)">${cells}</div>
+        <div class="foot"><span>Sheet ${n} of ${total}</span><span>Seed ${seed}</span></div>
+      </section>`);
+    }
+  });
+  $("pages").innerHTML = out.length ? out.join("") :
+    '<p style="color:#6b7280;margin-top:80px">Tick at least one sheet type.</p>';
+}
+
+["t-cap","t-low","t-mix","t-num","count","theme","font","nameLine","skipConf","seed"]
+  .forEach(id=>$(id).addEventListener("input",render));
+$("shuffle").addEventListener("click",()=>{$("seed").value=Math.floor(Math.random()*900000)+1;render()});
+$("print").addEventListener("click",()=>window.print());
+
+$("seed").value = Math.floor(Math.random()*900000)+1;
+render();
+</script>
+</body>
+</html>
